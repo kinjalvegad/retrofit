@@ -1,0 +1,83 @@
+package com.appAdmins.Bhomio.App.App
+
+object Constants {
+
+    interface OnDataPass {
+        fun onDataPass(data: String)
+    }
+
+    interface TimeOut {
+        companion object {
+            const val IMAGE_UPLOAD_CONNECTION_TIMEOUT = 120
+            const val IMAGE_UPLOAD_SOCKET_TIMEOUT = 120
+            const val SOCKET_TIME_OUT = 60
+            const val CONNECTION_TIME_OUT = 60
+        }
+    }
+
+    interface UrlPath {
+        companion object {
+            //phone pay integration
+            const val MERCHANT_ID = "M22N2KNSN5K4C"
+            const val MERCHANT_API_KEY = "feda2392-8885-4121-a836-b81babb7e583"
+            const val BASE_URL =
+                "http://192.168.29.214:8000/api/"  //"https://parkwell.in/public/api/"  // "http://192.168.29.214:8000/api/"
+            const val LOGIN = "login" // login model
+            const val REGISTER = "register"
+            const val SET_PASSWORD = "setPassword"  // set pin
+            const val PROFILE = "profile" // profile Fragment
+            const val FAMILY_MEMBER = "FamilyMember"
+            const val MY_FAMILY = "MyFamily"
+            const val SHOW_MOBILE_NUMBER = "ShowMobile"
+            const val BUSINESS_DIRECTORY = "businessdirectiory"
+            const val GET_C_FIELD = "getCfield"
+            const val SURNAMES = "surnames"
+            const val LOGOUT = "logout"
+            const val PROFILE_PICTURE = "profile_picture"
+            const val PROFILE_UPDATE = "profileUpdate"
+            const val MEMBER_UPDATE = "MemberUpdate"
+            const val FEED = "Feed"
+            const val FILTER = "Filter"
+            const val LIKE_STORE = "LikeStore"
+            const val COMMENT_LIKE = "CommentLike"
+            const val COMMENT_STORE = "commentStore"
+            const val COMMENT_LIST = "commentList"
+            const val GET_COMMUNITY = "getCommunity"
+            const val SET_USER_MOBILE = "setUserMobile"
+            const val GET_COMMITTEE = "getCommittee"
+            const val GET_PINCODE = "getpincodedetails"
+            const val SEND_FCM_NOTIFICATION = "sendFcmNotification"
+            const val GET_HALL_BOOKING_LIST = "booking_hall_list"
+            const val GET_HALL_C_FIELD = "getHallCfield"
+            const val BOOK_HALL = "bookHall"
+            const val GET_COMMUNITY_HALL = "getCommunityHall"
+            const val NOTIFICATION = "Notification"
+            const val DELETE_NOTIFICATION = "deleteNotification"
+            const val PAYMENT = "payment"
+            const val STORE_USER_PAYMENT_IN_SERVER = BASE_URL + "phonepe/callback"
+
+        }
+    }
+
+    interface ErrorClass {
+        companion object {
+            const val CODE = "code"
+            const val STATUS = "status"
+            const val MESSAGE = "message"
+            const val DEVELOPER_MESSAGE = "developerMessage"
+        }
+    }
+
+    interface ResponseCode {
+        companion object {
+            const val CODE_200 = 200
+            const val CODE_204 = 204
+            const val CODE_502 = 502
+            const val CODE_400 = 400
+            const val CODE_403 = 403
+            const val CODE_404 = 404
+            const val CODE_401 = 401
+            const val CODE_422 = 422
+        }
+    }
+}

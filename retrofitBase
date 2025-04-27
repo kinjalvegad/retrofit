@@ -1,0 +1,147 @@
+package com.appAdmins.Bhomio.App.Retrofit;
+
+import android.content.Context;
+
+import androidx.annotation.NonNull;
+
+import com.appAdmins.Bhomio.App.App.AppUtils;
+import com.appAdmins.Bhomio.App.App.Constants;
+import com.appAdmins.Bhomio.App.App.SessionManager;
+import com.appAdmins.Bhomio.App.Retrofit.listener.RetrofitListener;
+import com.appAdmins.Bhomio.App.Retrofit.model.ErrorObject;
+import com.appAdmins.Bhomio.App.Retrofit.utils.HttpUtil;
+import com.appAdmins.Bhomio.App.Retrofit.utils.Logger;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
+
+public class RetrofitBase {
+
+    protected Retrofit retrofit;
+    protected Context context;
+    private Logger logger;
+    private Gson gson;
+    private SessionManager mSessionManager;
+
+    public RetrofitBase(Context context, String baseUrl, boolean addTimeout) {
+        this.context = context;
+
+        mSessionManager = new SessionManager(context);
+
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient().newBuilder().addInterceptor(interceptor);
+        if (addTimeout) {
+            httpClientBuilder.readTimeout(Constants.TimeOut.SOCKET_TIME_OUT, TimeUnit.SECONDS);
+            httpClientBuilder.connectTimeout(Constants.TimeOut.CONNECTION_TIME_OUT, TimeUnit.SECONDS);
+        } else {
+            httpClientBuilder.readTimeout(Constants.TimeOut.IMAGE_UPLOAD_SOCKET_TIMEOUT, TimeUnit.SECONDS);
+            httpClientBuilder.connectTimeout(Constants.TimeOut.IMAGE_UPLOAD_CONNECTION_TIMEOUT, TimeUnit.SECONDS);
+        }
+
+        //if (baseUrl.contains("https://eaqsjflcmb.execute-api.us-east-1.amazonaws.com"))
+        addVersioningHeaders(httpClientBuilder, context);
+
+        OkHttpClient httpClient = httpClientBuilder.build();
+
+        gson = new GsonBuilder()
+                .setLenient()
+                .create();
+
+        logger = new Logger(RetrofitBase.class.getSimpleName());
+
+//        create Retrofit object
+
+        retrofit = new Retrofit
+                .Builder()
+                .baseUrl(baseUrl)
+                .client(httpClient)
+                .addConverterFactory(ScalarsConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build();
+
+    }
+
+    private void addVersioningHeaders(OkHttpClient.Builder builder, Context context) {
+        final String appVersion = "v.1.0.1";
+        final int version = AppUtils.INSTANCE.getApplicationVersionCode(context);
+        final String appName = "RetroKit";
+        final String name = "RetroKit";
+        builder.interceptors().add(new Interceptor() {
+
+            public okhttp3.Response intercept(@NonNull Chain chain) throws IOException {
+                Request request = chain.request().newBuilder()
+                        .addHeader(appVersion, String.valueOf(version))
+                        .addHeader(appName, name)
+                        .addHeader("Authorization", "Bearer " + mSessionManager.getAuthToken(SessionManager.AUTH_TOKEN))
+                        .build();
+                return chain.proceed(request);
+            }
+        });
+
+        System.out.println("AUTH====> " + mSessionManager.getAuthToken(SessionManager.AUTH_TOKEN));
+    }
+
+    void validateResponse(Response response, RetrofitListener retrofitListener, String apiFlag) {
+        if (response.code() == 200) {
+            try {
+                retrofitListener.onResponseSuccess(response);
+            } catch (Exception e) {
+                error(response, retrofitListener, apiFlag);
+            }
+        } else {
+            error(response, retrofitListener, apiFlag);
+        }
+    }
+
+    public void validateResponse(Response response, RetrofitListener retrofitListener) {
+        if (response.code() == 200 || response.code() == 204 || response.code() == Constants.ResponseCode.CODE_400) {
+            try {
+                retrofitListener.onResponseSuccess(response);
+            } catch (Exception e) {
+                error(response, retrofitListener);
+            }
+        } else {
+            error(response, retrofitListener);
+        }
+    }
+
+    private void error(Response response, RetrofitListener retrofitListener, String apiFlag) {
+        Gson gson = new Gson();
+        ErrorObject errorPojo;
+        try {
+            assert response.errorBody() != null;
+            errorPojo = gson.fromJson((response.errorBody()).string(), ErrorObject.class);
+            if (errorPojo == null) {
+                errorPojo = HttpUtil.getServerErrorPojo(context);
+            }
+            //retrofitListener.onResponseError(errorPojo, null, apiFlag);
+        } catch (Exception e) {
+            //retrofitListener.onResponseError(HttpUtil.getServerErrorPojo(context), null, apiFlag);
+        }
+    }
+
+    private void error(Response response, RetrofitListener retrofitListener) {
+        Gson gson = new Gson();
+        ErrorObject errorPojo;
+        try {
+            assert response.errorBody() != null;
+            errorPojo = gson.fromJson((response.errorBody()).string(), ErrorObject.class);
+            if (errorPojo == null) {
+                errorPojo = HttpUtil.getServerErrorPojo(context);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+}

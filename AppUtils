@@ -1,0 +1,826 @@
+package com.appAdmins.Bhomio.App.App
+
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.ActivityManager
+import android.content.Context
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Shader
+import android.graphics.drawable.GradientDrawable
+import android.location.LocationManager
+import android.media.ExifInterface
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
+import android.provider.Settings
+import android.telephony.TelephonyManager
+import android.util.Patterns
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import com.appAdmins.Bhomio.App.R
+import com.appAdmins.Bhomio.App.Retrofit.ApiServices
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.text.DateFormat
+import java.text.DecimalFormat
+import java.text.NumberFormat
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
+object AppUtils {
+
+    private val logger: Logger = Logger(AppUtils::class.java.simpleName)
+
+    fun getPhonePayApiInstance() : ApiServices {
+        return Retrofit.Builder()
+            .baseUrl("https://apps-uat.phonepe.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ApiServices::class.java)
+    }
+
+    fun setStatusBar(activity: Activity, color: Int) {
+        val window = activity.window
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+        window.statusBarColor = color
+
+        // Optional: If you want to set the status bar text color to light or dark
+        window.decorView.systemUiVisibility = if (isColorDark(color)) {
+            // Dark color, use light status bar icons
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        } else {
+            // Light color, use dark status bar icons
+            0
+        }
+    }
+
+
+    fun passDataToActivity(fragment: Fragment, data: String) {
+        val activity = fragment.activity
+        if (activity is Constants.OnDataPass) {
+            activity.onDataPass(data)
+        } else {
+            throw ClassCastException("${activity?.javaClass?.simpleName} must implement OnDataPass")
+        }
+    }
+
+    private fun isColorDark(color: Int): Boolean {
+        val darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255
+        return darkness >= 0.5
+    }
+
+    fun addFragment(
+        context: Context,
+        container: Int,
+        fragment: Fragment?,
+        isAddToBackstack: Boolean
+    ) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        //transaction.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right)
+        transaction.add(container, fragment!!)
+        if (isAddToBackstack) transaction.addToBackStack(null)
+        transaction.commit()
+    }
+
+    fun replaceFragment(
+        context: Context,
+        container: Int,
+        fragment: Fragment?,
+        isAddToBackstack: Boolean
+    ) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        //transaction.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right)
+        transaction.replace(container, fragment!!)
+        if (isAddToBackstack) transaction.addToBackStack(null)
+        transaction.commit()
+    }
+
+
+    fun replaceFragment(
+        context: Context,
+        container: Int,
+        fragment: Fragment?,
+        isAddToBackstack: Boolean,
+        bottomNavigationViewItemId: Int
+    ) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        transaction.replace(container, fragment!!)
+        if (isAddToBackstack) transaction.addToBackStack(null)
+        transaction.commit()
+        (context).findViewById<BottomNavigationView>(R.id.bottomNav)?.selectedItemId =
+            bottomNavigationViewItemId
+    }
+
+    fun replaceFragmentClearTask(
+        context: Context,
+        container: Int,
+        fragment: Fragment?,
+        isAddToBackstack: Boolean,
+        bottomNavigationViewItemId: Int
+    ) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        val currentFragment =
+            (context).supportFragmentManager.findFragmentById(container)
+
+        // Clear tasks of the current fragment
+        currentFragment?.let {
+            transaction.remove(it)
+        }
+
+        // Replace the fragment
+        transaction.replace(container, fragment!!)
+        if (isAddToBackstack) transaction.addToBackStack(null)
+        transaction.commit()
+        (context).findViewById<BottomNavigationView>(R.id.bottomNav)?.selectedItemId =
+            bottomNavigationViewItemId
+    }
+
+    fun replaceFragment(
+        context: Context,
+        container: Int,
+        fragment: Fragment?,
+        bundle: Bundle,
+        isAddToBackstack: Boolean
+    ) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        //transaction.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right)
+        fragment!!.arguments = bundle
+        transaction.replace(container, fragment)
+        if (isAddToBackstack) transaction.addToBackStack(null)
+        transaction.commit()
+    }
+
+    fun removeFragment(context: Context, fragment: Fragment?) {
+        val transaction = (context as AppCompatActivity).supportFragmentManager.beginTransaction()
+        //transaction.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right)
+        transaction.remove(fragment!!)
+        transaction.commit()
+    }
+
+    /*public static String getApplicationVersionName(Context context) {
+        PackageInfo packageInfo;
+        try {
+            packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            return packageInfo.versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            logger.debug("Exception while fetching version name");
+            logger.error(e);
+        } catch (Exception e) {
+            logger.error(e);
+        }
+        return context.getString(R.string.not_available);
+    }*/
+    /**
+     * Retrieve Application Version code for sending in the header of api calls
+     *
+     * @param context
+     * @return App Code
+     */
+    fun getApplicationVersionCode(context: Context): Int {
+        val packageInfo: PackageInfo
+        try {
+            packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            return packageInfo.versionCode
+        } catch (e: PackageManager.NameNotFoundException) {
+            logger.debug("Exception while fetching version name")
+            logger.error(e)
+        } catch (e: java.lang.Exception) {
+            logger.error(e)
+        }
+        return -1
+    }
+
+    /**
+     * Used to check is EditText empty or not.
+     * @param editText
+     * @return
+     */
+    fun isEditTextEmpty(editText: EditText): Boolean {
+        return editText.text.toString().trim { it <= ' ' } == ""
+    }
+
+    /**
+     * Extension function for make view visible.
+     */
+    fun View.visible() {
+        this@visible.visibility = View.VISIBLE
+    }
+
+
+    /**
+     * Extension function for make view gone.
+     */
+    fun View.gone() {
+        this@gone.visibility = View.GONE
+    }
+
+
+    /**
+     * Extension function for make view Invisible.
+     */
+    fun View.invisible() {
+        this@invisible.visibility = View.INVISIBLE
+    }
+
+    /**
+     * Method is used to get the value of EditText.
+     * @param editText
+     * @return
+     */
+    fun getEditTextValue(editText: EditText): String {
+        return editText.text.toString()
+    }
+
+
+    /**
+     * Used to check the email validation..
+     * @param editText
+     * @return
+     */
+
+    fun isValidEmail(editText: EditText): Boolean {
+        return Patterns.EMAIL_ADDRESS.matcher(getEditTextValue(editText)).matches()
+    }
+
+
+    fun isActivityRunning(context: Context, activityClass: Class<*>): Boolean? {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val tasks = activityManager.getRunningTasks(Int.MAX_VALUE)
+        for (task in tasks) {
+            if (activityClass.canonicalName.equals(
+                    task.baseActivity!!.className,
+                    ignoreCase = true
+                )
+            ) return true
+        }
+        return false
+    }
+
+
+    /**
+     * Used to show alert dialog without title.
+     * @param context
+     * @param message
+     * @param positiveButton
+     */
+
+    fun showAlertDialog(context: Context?, message: String?, positiveButton: String?) {
+        val alertDialog = AlertDialog(context)
+        alertDialog.setCancelable(false)
+        alertDialog.setMessage(message)
+        alertDialog.setPositveButton(positiveButton, View.OnClickListener { alertDialog.dismiss() })
+        alertDialog.show()
+    }
+
+
+    /**
+     * Used to show alert dialog with title.
+     * @param context
+     * @param title
+     * @param message
+     * @param positiveButton
+     */
+
+    fun showAlertDialog(
+        context: Context?,
+        title: String?,
+        message: String?,
+        positiveButton: String?
+    ) {
+        val alertDialog = AlertDialog(context)
+        alertDialog.setCancelable(false)
+        alertDialog.title = title
+        alertDialog.message = message
+        alertDialog.setPositveButton(positiveButton, View.OnClickListener {
+            alertDialog.dismiss()
+        })
+        alertDialog.show()
+    }
+
+    /**
+     * Used to show alert dialog with title.
+     * @param context
+     * @param title
+     * @param message
+     * @param positiveButton
+     */
+//    fun showAlertDialog(
+//        context: Context?,
+//        title: String?,
+//        message: String?,
+//        positiveButton: String?,
+//        nagativeButton: String?
+//    ) {
+//        val alertDialog = AlertDialog(context)
+//        alertDialog.setCancelable(false)
+//        alertDialog.title = title
+//        alertDialog.message = message
+//        alertDialog.setPositveButton(positiveButton, View.OnClickListener {
+//
+//        })
+//        alertDialog.setNegativeButton(nagativeButton, View.OnClickListener {
+//            alertDialog.dismiss()
+//        })
+//        alertDialog.show()
+//    }
+
+
+    fun getGradient(): GradientDrawable {
+        val gd = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(-0x9e9d9f, -0xececed)
+        )
+        gd.cornerRadius = 0f
+
+        return gd;
+    }
+
+
+    /**
+     * Used to hide the softkeyoard.
+     * @param view
+     */
+    fun hideSoftKeyBoard(view: View, context: Context) {
+        try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(view.windowToken, 0)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+    /**
+     * Used to Show the softkeyoard.
+     * @param view
+     */
+    fun showSoftKeyBoard(view: View, context: Context) {
+        try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.toggleSoftInputFromWindow(view.windowToken, InputMethodManager.SHOW_FORCED, 0)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+    fun isMyServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
+        val manager: ActivityManager? =
+            context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager?
+        for (service in manager!!.getRunningServices(Int.MAX_VALUE)) {
+            if (serviceClass.name == service.service.getClassName()) {
+                return true
+            }
+        }
+        return false
+    }
+
+
+    fun setLanguages(mContext: Context, languageCode: String?): Configuration {
+        val locale = Locale(languageCode!!)
+        Locale.setDefault(locale)
+        val resources: Resources = mContext.resources
+        val config: Configuration = resources.configuration
+        config.setLocale(locale)
+        resources.updateConfiguration(config, resources.displayMetrics)
+        return config
+    }
+
+    /**
+     * Used to get real path from URL..
+     * @param contentUri
+     * @return
+     */
+    fun getRealPathFromURI(context: Context, contentUri: Uri?): String {
+        var result: String? = null
+        val cursor = context.contentResolver.query(contentUri!!, null, null, null, null)
+        if (cursor == null) {
+            result = contentUri.path
+        } else {
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA)
+                result = cursor.getString(idx)
+            }
+            cursor.close()
+        }
+        return result!!
+    }
+
+
+    /**
+     * Used to rotate captured image clockwise..
+     * @param imagePath
+     * @return
+     */
+
+    fun getImageOrientation(imagePath: String?): Int {
+        var rotate = 0
+        try {
+            val imageFile = File(imagePath)
+            val exif = ExifInterface(imageFile.absolutePath)
+            val orientation: Int = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_270 -> rotate = 270
+                ExifInterface.ORIENTATION_ROTATE_180 -> rotate = 180
+                ExifInterface.ORIENTATION_ROTATE_90 -> rotate = 90
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return rotate
+    }
+
+
+    fun getThemeGradientLeftToRight(
+        colors: List<String>,
+        orientation: GradientDrawable.Orientation,
+        cornerRadius: Int,
+        isStrokeShown: Boolean,
+        strokeWidth: Int,
+        strokeColor: Int
+    ): GradientDrawable {
+        val gd = GradientDrawable(
+            orientation,
+            intArrayOf(Color.parseColor(colors[0]), Color.parseColor(colors[1]))
+        )
+        gd.cornerRadius = cornerRadius.toFloat()
+
+        if (isStrokeShown)
+            gd.setStroke(strokeWidth, strokeColor)
+
+        return gd
+    }
+
+
+    fun getThemeGradientLeftToRight(
+        colors: List<String>,
+        orientation: GradientDrawable.Orientation,
+        cornerRadius: FloatArray,
+        isStrokeShown: Boolean,
+        strokeWidth: Int,
+        strokeColor: Int
+    ): GradientDrawable {
+        val gd = GradientDrawable(
+            orientation,
+            intArrayOf(Color.parseColor(colors[0]), Color.parseColor(colors[1]))
+        )
+        gd.cornerRadii = cornerRadius
+
+        if (isStrokeShown)
+            gd.setStroke(strokeWidth, strokeColor)
+
+        return gd
+    }
+
+
+    fun getGradientTint(originalBitmap: Bitmap, colors: List<String>): Bitmap? {
+        val width = originalBitmap.width
+        val height = originalBitmap.height
+        val updatedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(updatedBitmap)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, null)
+        val paint = Paint()
+        paint.shader = LinearGradient(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat(),
+            Color.parseColor(colors[0]),
+            Color.parseColor(colors[1]),
+            Shader.TileMode.CLAMP
+        )
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        return updatedBitmap
+    }
+
+
+    fun compressImg(imagem_img: ByteArray): ByteArray {
+        var imagem_img = imagem_img
+        while (imagem_img.size > 500000) {
+            val bitmap = BitmapFactory.decodeByteArray(imagem_img, 0, imagem_img.size)
+            val resized = Bitmap.createScaledBitmap(
+                bitmap,
+                (bitmap.width * 0.8).toInt(), (bitmap.height * 0.8).toInt(), true
+            )
+            val stream = ByteArrayOutputStream()
+            resized.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            imagem_img = stream.toByteArray()
+        }
+        return imagem_img
+    }
+
+    fun splitToComponentTimes(seconds: Int): Array<Int> {
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val seconds = seconds % 60
+
+        return arrayOf(hours, minutes, seconds)
+    }
+
+    fun convertTimeToSeconds(time: Date): Int {
+        val createdDateTime = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH).format(time)
+        val units: List<String> =
+            createdDateTime.split(":") //will break the string up into an array
+        val hours = units[0].toInt()
+        val minutes = units[1].toInt()
+        val seconds = units[2].toInt()
+        return (60 * 60 * hours) + (60 * minutes) + seconds
+    }
+
+    fun getJsonDataFromAsset(context: Context, fileName: String): String? {
+        val jsonString: String
+        try {
+            jsonString = context.assets.open(fileName).bufferedReader().use { it.readText() }
+        } catch (ioException: IOException) {
+            ioException.printStackTrace()
+            return null
+        }
+        return jsonString
+    }
+
+    /**
+     * Get start date of month...
+     */
+
+    fun getStartDateOfMonth(date: Date): String {
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+        calendar.add(Calendar.MONTH, 0)
+        calendar[Calendar.DATE] = calendar.getActualMinimum(Calendar.DAY_OF_MONTH)
+        val monthFirstDay = calendar.time
+
+        val df = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+
+        return df.format(monthFirstDay)
+    }
+
+    fun getEndDateOfMonth(date: Date): String {
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+        calendar.add(Calendar.MONTH, 0)
+        calendar[Calendar.DATE] = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val monthLastDay = calendar.time
+        val df = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+        val endDateStr = df.format(monthLastDay)
+
+        return endDateStr
+    }
+
+    fun convertUTCTimestampToDate(timestamp: String): Date {
+        val utc = TimeZone.getTimeZone("UTC")
+        val sourceFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ENGLISH)
+        sourceFormat.timeZone = utc
+        val sourceDate = sourceFormat.parse(timestamp)
+        println("TimeZone==" + TimeZone.getDefault())
+        sourceFormat.timeZone = TimeZone.getDefault()
+        val convertedDate = sourceFormat.format(sourceDate!!)
+
+        return sourceFormat.parse(convertedDate)!!
+    }
+
+
+    fun timeAgo(
+        dateString: String,
+        dateFormat: String = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"
+    ): String {
+        // Parse the date string into a Date object
+        val sdf = SimpleDateFormat(dateFormat, Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val date: Date = sdf.parse(dateString) ?: return "Invalid date"
+
+        // Get the current time in milliseconds
+        val currentTimeUTC = System.currentTimeMillis()
+
+        // Calculate the difference in milliseconds
+        val diffInMillis = currentTimeUTC - date.time
+
+        // Convert milliseconds to seconds, minutes, hours, days, and weeks
+        val diffInSeconds = diffInMillis / 1000
+        val diffInMinutes = diffInSeconds / 60
+        val diffInHours = diffInMinutes / 60
+        val diffInDays = diffInHours / 24
+        val diffInWeeks = diffInDays / 7
+
+        return when {
+            diffInSeconds < 60 -> {
+                "$diffInSeconds s"
+            }
+            diffInMinutes < 60 -> {
+                "$diffInMinutes m"
+            }
+            diffInHours < 24 -> {
+                "$diffInHours h"
+            }
+            diffInDays < 7 -> {
+                "$diffInDays d"
+            }
+            else -> {
+                "$diffInWeeks w"
+            }
+        }
+    }
+
+    fun convertTimestampToDate(timestamp: String): Date {
+        val utc = TimeZone.getTimeZone("UTC")
+        val sourceFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+        sourceFormat.timeZone = utc
+        return sourceFormat.parse(timestamp)!!
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    fun convertToDisplayFormat(date: String): String {
+        val sourceFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val destFormat = SimpleDateFormat("dd-MMM-yyyy")
+        return destFormat.format(sourceFormat.parse(date)!!)
+    }
+
+    /***
+     * for profile and family member date show from api to user
+     */
+
+    @SuppressLint("SimpleDateFormat")
+    fun convertDateToDisplayFormat(date: String): String {
+        val sourceFormat =
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") //"2006-02-02T18:00:00.000000Z",
+        val destFormat = SimpleDateFormat("dd-MMM-yyyy")
+        return destFormat.format(sourceFormat.parse(date)!!)
+    }
+
+    fun convertDateToDisplayYearFormat(date: String): String {
+        val sourceFormat =
+            SimpleDateFormat("yyyy-MM-dd") //"2006-02-02T18:00:00.000000Z",
+        val destFormat = SimpleDateFormat("dd-MMM-yyyy")
+        return destFormat.format(sourceFormat.parse(date)!!)
+    }
+
+    fun convertDateFormat(date: String): String {
+        // Input format is in UTC
+        val inputFormat = SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault())
+
+        // Output format
+        val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        outputFormat.timeZone = TimeZone.getDefault() // Set output time zone to local time zone
+
+        return try {
+            val parsedDate = inputFormat.parse(date)
+            if (parsedDate != null) {
+                outputFormat.format(parsedDate)
+            } else {
+                date
+            }
+        } catch (e: ParseException) {
+            e.printStackTrace()
+            date
+        }
+    }
+
+    fun convertDateToDisplayFormats(date: String): String {
+        val sourceFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        sourceFormat.timeZone = TimeZone.getTimeZone("UTC") // Set the source time zone to UTC
+        val destFormat = SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault())
+        return try {
+            val parsedDate = sourceFormat.parse(date)
+            if (parsedDate != null) {
+                destFormat.format(parsedDate)
+            } else {
+                "Invalid Date"
+            }
+        } catch (e: ParseException) {
+            e.printStackTrace()
+            "Invalid Date"
+        }
+    }
+
+    fun convertDateForDataDisplayFormat(date: String): String? {
+        val inputFormat = SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        val date: Date = inputFormat.parse(date) ?: return null
+
+        return outputFormat.format(date)
+    }
+
+    /***
+     * convert DOB to current age
+     ***/
+
+    @SuppressLint("SimpleDateFormat")
+    fun convertDateToDisplayData(date: String): String {
+        val sourceFormat = SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault())
+        val destFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        return destFormat.format(sourceFormat.parse(date)!!)
+    }
+
+    fun convertToYearOfBirth(date: Date): String {
+        val destFormat = SimpleDateFormat("yyyy", Locale.ENGLISH)
+        return destFormat.format(date).uppercase()
+    }
+
+    fun convertToDisplayTimeFormat(date: Date): String {
+        val destFormat = SimpleDateFormat("HH:mm", Locale.ENGLISH)
+        return destFormat.format(date).uppercase()
+    }
+
+    fun convertDateToYYYYFormat(date: String): String {
+        val sourceFormat = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+        val destFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+        return destFormat.format(sourceFormat.parse(date)!!)
+    }
+
+    /**
+     * Used to get days of week..
+     */
+
+    @SuppressLint("SimpleDateFormat")
+    fun getDaysOfWeek(): ArrayList<Date> {
+        val format: DateFormat = SimpleDateFormat("dd")
+        val calendar: Calendar = Calendar.getInstance()
+
+        val days: ArrayList<Date> = ArrayList()
+        days.add(0, Date())
+
+        for (i in 0..6) {
+            if (format.format(calendar.time) != format.format(Date())) {
+                days.add(calendar.time)
+            }
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        return days
+    }
+
+    /**
+     * Get system language...
+     */
+    fun getSystemLanguage(): String {
+        return Resources.getSystem().configuration.locale.language
+    }
+
+    /**
+     * Used to check, is location enabled or not....
+     */
+    fun isLocationEnabled(context: Context): Boolean {
+        val locationManager: LocationManager =
+            context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
+            LocationManager.NETWORK_PROVIDER
+        )
+    }
+
+    fun convertToPriceFormat(amount: String): String {
+        val formatter: NumberFormat = DecimalFormat("###,###,##0.00")
+        return formatter.format(amount.toDouble())
+    }
+
+    /**
+     * Used to get Device Id.
+     */
+    @SuppressLint("HardwareIds", "MissingPermission")
+    fun getDeviceId(context: Context): String {
+        val deviceId: String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ANDROID_ID
+            )
+        } else {
+            val mTelephony = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            if (mTelephony.deviceId != null) {
+                mTelephony.deviceId
+            } else {
+                Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                )
+            }
+        }
+        return deviceId
+    }
+
+}

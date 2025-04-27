@@ -1,0 +1,148 @@
+package com.appAdmins.Bhomio.App.App
+
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.content.SharedPreferences.Editor
+import android.widget.Toast
+import com.appAdmins.Bhomio.App.Community.Activity.DashBoardActivity
+import com.appAdmins.Bhomio.App.Login.Activity.LoginActivity
+
+class SessionManager(private val _context: Context) {
+    private val pref: SharedPreferences
+    private val introPref: SharedPreferences
+    private val editor: Editor
+    private val introEditor: Editor
+    private val PRIVATE_MODE = 0
+
+    fun setData(key: String?, value: String?) {
+        editor.putString(key, value)
+        editor.commit()
+    }
+
+    fun setData(key: String, value: Boolean) {
+        editor.putBoolean(key, value)
+        editor.commit()
+    }
+
+    fun setData(key: String, value: Int) {
+        editor.putInt(key, value)
+        editor.commit()
+    }
+
+    fun setLanguage(key: String, value: String) {
+        editor.putString(key, value)
+        editor.commit()
+    }
+
+    fun setUserLogin(isUserLogin: Boolean) {
+        editor.putBoolean(IS_USER_LOGIN, isUserLogin)
+        editor.commit()
+    }
+
+    fun checkLogin() {
+        if (!isLoggedIn) {
+            val i = Intent(_context, LoginActivity::class.java)
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+            _context.startActivity(i)
+        } else {
+            val i = Intent(_context, DashBoardActivity::class.java)
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+            _context.startActivity(i)
+        }
+
+    }
+
+    fun getData(key: String?): String? {
+        return pref.getString(key, "")
+    }
+
+    fun getData(key: String?, defaultValue: String?): String? {
+        return pref.getString(key, defaultValue)
+    }
+
+    fun getAuthToken(key: String?): String? {
+        return pref.getString(key, "")
+    }
+
+    fun getIntData(key: String?): Int {
+        return pref.getInt(key, 11)
+    }
+
+    fun getLanguage(key: String?, defaultValue: String): String? {
+        return pref.getString(key, defaultValue)
+    }
+
+    fun getCurrency(key: String?, defaultValue: String): String? {
+        return pref.getString(key, defaultValue)
+    }
+
+    fun getBooleanData(key: String?): Boolean {
+        return pref.getBoolean(key, true)
+    }
+
+    fun getBooleanData(key: String?, defaultValue: Boolean): Boolean {
+        return pref.getBoolean(key, defaultValue)
+    }
+
+    fun logoutUser () {
+        editor.clear()
+        editor.commit()
+        introEditor.clear()
+        introEditor.commit()
+
+        // Optional: Show a toast message indicating successful logout
+        Toast.makeText(_context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+
+        val intent = Intent(_context, LoginActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+        _context.startActivity(intent)
+    }
+
+    val isLoggedIn: Boolean
+        get() = pref.getBoolean(IS_USER_LOGIN, false)
+
+    companion object {
+        private const val PREFER_NAME = "4hire"
+        private const val INTRO_PREFER_NAME = "4hire_intro"
+        private const val IS_USER_LOGIN = "is_user_loggedIn"
+        const val FCM_TOKEN = "FCM_TOKEN"
+        private const val IS_PIN_SET = "is_pin_set"
+        const val PASSWORD = "password"
+        const val USER_ID = "user_id"
+        const val USER_NAME = "user_name"
+        const val AVATAR = "avatar"
+        const val COMMUNITY_ID = "community_id"
+        const val ENTITY_NAME = "EntityName"
+        const val PROP_NAME = "PropName"
+        const val AUTH_TOKEN = "token"
+        const val MOBILE_NO = "MobileNo"
+        const val ADDRESS = "Adderess"
+        const val EMAIL = "Email"
+        const val EXTRA_TEXT = "ExtraText"
+        const val USER_ROLE = "userrole"
+    }
+
+    init {
+        pref = _context.getSharedPreferences(PREFER_NAME, PRIVATE_MODE)
+        introPref = _context.getSharedPreferences(INTRO_PREFER_NAME, PRIVATE_MODE)
+        editor = pref.edit()
+        introEditor = introPref.edit()
+    }
+
+    /***
+     * remember me
+     */
+    fun rememberMe(phone: String?, pass: String?) {
+        editor.putString(MOBILE_NO, phone)
+        editor.putString(PASSWORD, pass)
+        editor.commit()
+    }
+
+    fun getRememberedCredentials(): Pair<String?, String?> {
+        val phone = getData(MOBILE_NO)
+        val password = getData(PASSWORD)
+        return Pair(phone, password)
+    }
+
+}

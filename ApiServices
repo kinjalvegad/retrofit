@@ -1,0 +1,66 @@
+package com.appAdmins.Bhomio.App.Retrofit
+
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.Call
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.Part
+import retrofit2.http.PartMap
+import retrofit2.http.Path
+import retrofit2.http.Url
+
+interface ApiServices {
+
+    @POST()
+    fun postApiCall(
+        @Url requestUrl: String,
+        @Body requestData: HashMap<String, String>
+    ): Call<JsonElement>
+
+    @POST()
+    fun postApiCall(
+        @Url requestUrl: String,
+        @Body requestData: JsonObject
+    ): Call<JsonElement>
+
+    @POST()
+    fun postApiCall(
+        @Url requestUrl: String
+    ): Call<JsonElement>
+
+    @GET()
+    fun getApiCall(
+        @Url requestUrl: String
+    ): Call<JsonElement>
+
+    @Multipart
+    @POST()
+    fun multipartApiCall(
+        @Url requestUrl: String?,
+        @Part("user_id") requestData: RequestBody,
+        @Part image: MultipartBody.Part
+    ): Call<JsonElement>
+
+    @Multipart
+    @POST
+    fun multipartApiCall(
+        @Url requestUrl: String,
+        @PartMap requestData: HashMap<String, RequestBody>,
+        @Part file: MultipartBody.Part
+    ): Call<JsonElement>
+
+
+    @GET("pg/v1/status/{merchantTid}")
+    fun checkPaymentStatus(
+        @Path("merchantTid") merchantTid: String,
+        @Header("Content-Type") contentType: String,
+        @Header("X-VERIFY") xVerify: String,
+        @Header("X-MERCHANT-ID") merchantId: String
+    ): Call<JsonElement>
+}

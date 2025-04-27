@@ -1,0 +1,5 @@
+package com.appAdmins.Bhomio.App.Retrofit.listener;
+
+public interface InternetConnectionListener {
+    void onConnectionError(String errorMsg);
+}

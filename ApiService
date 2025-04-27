@@ -1,0 +1,369 @@
+package com.appAdmins.Bhomio.App.Retrofit
+
+import android.content.Context
+import android.util.Log
+import com.appAdmins.Bhomio.App.App.AlertDialog
+import com.appAdmins.Bhomio.App.App.ConnectionError
+import com.appAdmins.Bhomio.App.App.Constants
+import com.appAdmins.Bhomio.App.App.Constants.UrlPath.Companion.MERCHANT_ID
+import com.appAdmins.Bhomio.App.App.LoadingDialog
+import com.appAdmins.Bhomio.App.Retrofit.listener.RetrofitListener
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+class ApiServiceProvider : RetrofitBase {
+
+    private var apiServices: ApiServices
+    private var mDialog: LoadingDialog?
+    var mAlertDialog: AlertDialog? = null
+
+    private constructor(context: Context) : super(context, Constants.UrlPath.BASE_URL, true) {
+        mDialog = LoadingDialog(context)
+        apiServices = retrofit.create(ApiServices::class.java)
+    }
+
+    private constructor(context: Context, baseUrl: String) : super(context, baseUrl, true) {
+        mDialog = LoadingDialog(context)
+        apiServices = retrofit.create(ApiServices::class.java)
+    }
+
+
+    private fun manageResponse(response: Response<*>, retrofitListener: RetrofitListener) {
+
+        println("response code ::; " + response.code())
+
+        when (response.code()) {
+            Constants.ResponseCode.CODE_200, Constants.ResponseCode.CODE_204 -> validateResponse(
+                response,
+                retrofitListener
+            )
+
+            Constants.ResponseCode.CODE_502, Constants.ResponseCode.CODE_400, Constants.ResponseCode.CODE_403, Constants.ResponseCode.CODE_404, Constants.ResponseCode.CODE_422 -> {
+            }
+
+            Constants.ResponseCode.CODE_401 -> {
+                Log.d("TAG", "manageResponse: 401 ===== ${response.errorBody().toString()}")
+                val errorJsonString = response.errorBody()?.string()
+                val message = JsonParser().parse(errorJsonString)
+                    .asJsonObject["message"]
+                    .toString()
+                mAlertDialog = AlertDialog(context)
+                mAlertDialog!!.message = message
+                mAlertDialog!!.setCancelable(false)
+                mAlertDialog!!.setPositveButton("Ok") { _ ->
+                    mAlertDialog!!.dismiss()
+                }
+                if (!mAlertDialog!!.isShowing) mAlertDialog!!.show()
+
+//                 val sessionManager = SessionManager(context)
+//                val responseObj = JSONObject(response.errorBody().toString())
+//                mAlertDialog = AlertDialog(context)
+//                mAlertDialog!!.message = responseObj.getString("message")
+//                mAlertDialog!!.setCancelable(false)
+//                mAlertDialog!!.setPositveButton("Ok") { view ->
+//                    mAlertDialog!!.dismiss()
+//                    sessionManager.logoutUser()
+//                }
+//                if (!mAlertDialog!!.isShowing) mAlertDialog!!.show()
+            }
+
+        }
+    }
+
+    private fun dismissDialog() {
+        if (mDialog != null && mDialog!!.isShowing) mDialog!!.dismiss()
+    }
+
+
+    /**
+     * Used to create a post request without body...
+     * @param retrofitListener
+     */
+
+    fun postApiCall(
+        requestUrl: String,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call = apiServices.postApiCall(
+            requestUrl = requestUrl,
+        )
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    postApiCall(
+                        requestUrl = requestUrl,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    /**
+     * Used to create a post request with body...
+     * @param retrofitListener
+     */
+
+    fun postApiCall(
+        requestUrl: String,
+        requestData: HashMap<String, String>,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call = apiServices.postApiCall(
+            requestUrl = requestUrl,
+            requestData = requestData
+        )
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    postApiCall(
+                        requestUrl = requestUrl,
+                        requestData = requestData,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    fun checkPaymentStatus(
+        merchantTid: String,
+        xVerify: String,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog?.show()
+
+        val call = apiServices.checkPaymentStatus(
+            merchantTid = merchantTid,
+            contentType = "application/json",
+            xVerify = xVerify,
+            merchantId = MERCHANT_ID
+        )
+
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    checkPaymentStatus(
+                        merchantTid =merchantTid ,
+                        xVerify = xVerify,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    /**
+     *  Used to create a post request with body using Json Object ...
+     *  @param retrofitListener
+     * **/
+    fun postApiCall(
+        requestUrl: String,
+        requestData: JsonObject,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call = apiServices.postApiCall(
+            requestUrl = requestUrl,
+            requestData = requestData
+        )
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    postApiCall(
+                        requestUrl = requestUrl,
+                        requestData = requestData,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    /**
+     *  Used to create a multipart request with body...
+     *  @param retrofitListener
+     * **/
+
+    fun sendMultipartDataWithUserId(
+        requestUrl: String,
+        requestData: RequestBody,
+        image: MultipartBody.Part,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call: Call<JsonElement> = apiServices.multipartApiCall(requestUrl, requestData, image)
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    sendMultipartDataWithUserId(
+                        requestUrl,
+                        requestData,
+                        image,
+                        isProgressShown,
+                        retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    fun sendMultipartData(
+        requestUrl: String,
+        requestData: HashMap<String, RequestBody>,
+        file: MultipartBody.Part,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        // Show progress dialog if required
+        if (isProgressShown) mDialog!!.show()
+        val call: Call<JsonElement> = apiServices.multipartApiCall(requestUrl, requestData, file)
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    sendMultipartData(
+                        requestUrl,
+                        requestData,
+                        file,
+                        isProgressShown,
+                        retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    /**
+     * Used to create a get API call...
+     * @param retrofitListener
+     */
+    fun getApiCall(
+        requestUrl: String,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call = apiServices.getApiCall(
+            requestUrl = requestUrl,
+        )
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    getApiCall(
+                        requestUrl = requestUrl,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+
+    fun getApiCall(
+        requestData: JsonObject,
+        requestUrl: String,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog!!.show()
+        val call = apiServices.getApiCall(
+            requestUrl = requestUrl,
+        )
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    getApiCall(
+                        requestUrl = requestUrl,
+                        isProgressShown = isProgressShown,
+                        retrofitListener = retrofitListener
+                    )
+                }
+            }
+        })
+    }
+
+    companion object {
+        fun getInstance(context: Context): ApiServiceProvider {
+            return ApiServiceProvider(context)
+        }
+
+        fun getInstance(context: Context, baseUrl: String): ApiServiceProvider {
+            return ApiServiceProvider(context, baseUrl)
+        }
+    }
+
+}

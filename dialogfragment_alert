@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_alert"
+    android:paddingBottom="@dimen/_15sdp">
+
+    <LinearLayout
+        android:id="@+id/rl_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_margin="@dimen/_18sdp">
+
+        <TextView
+            android:id="@+id/txt_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title"
+            style="@style/textviewDialogTitle"
+            android:layout_marginBottom="@dimen/_8sdp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/txt_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Message"
+            style="@style/textviewDialogSubTitle"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rl_title"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/btn_negative"
+            android:layout_width="@dimen/_90sdp"
+            android:layout_height="@dimen/_30sdp"
+            android:text="@string/cancle"
+            style="@style/btnCancelLight"
+            android:textSize="@dimen/_9ssp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/btn_positive"
+            android:layout_width="@dimen/_90sdp"
+            android:layout_height="@dimen/_30sdp"
+            android:text="@string/done"
+            style="@style/btnDone"
+            android:textSize="@dimen/_9ssp"
+            android:layout_marginStart="@dimen/_10sdp"/>
+
+    </LinearLayout>
+
+</RelativeLayout>

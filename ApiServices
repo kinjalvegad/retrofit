@@ -6,6 +6,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
@@ -63,4 +64,26 @@ interface ApiServices {
         @Header("X-VERIFY") xVerify: String,
         @Header("X-MERCHANT-ID") merchantId: String
     ): Call<JsonElement>
+
+
+    // Simple DELETE with URL only
+    @DELETE
+    fun deleteApiCall(
+        @Url requestUrl: String
+    ): Call<JsonElement>
+
+    // DELETE with a request body (if supported by your backend)
+    @DELETE
+    fun deleteApiCallWithBody(
+        @Url requestUrl: String,
+        @Body requestData: HashMap<String, String>
+    ): Call<JsonElement>
+
+    // DELETE with JSON body
+    @DELETE
+    fun deleteApiCallWithJsonBody(
+        @Url requestUrl: String,
+        @Body requestData: JsonObject
+    ): Call<JsonElement>
+
 }

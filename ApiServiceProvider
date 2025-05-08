@@ -366,4 +366,81 @@ class ApiServiceProvider : RetrofitBase {
         }
     }
 
+
+    fun deleteApiCall(
+        requestUrl: String,
+        requestData: JsonObject,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog?.show()
+
+        val call = apiServices.deleteApiCallWithJsonBody(requestUrl, requestData)
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    deleteApiCall(requestUrl, requestData, isProgressShown, retrofitListener)
+                }
+            }
+        })
+    }
+
+    fun deleteApiCall(
+        requestUrl: String,
+        requestData: HashMap<String, String>,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog?.show()
+
+        val call = apiServices.deleteApiCallWithBody(requestUrl, requestData)
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    deleteApiCall(requestUrl, requestData, isProgressShown, retrofitListener)
+                }
+            }
+        })
+    }
+
+
+    fun deleteApiCall(
+        requestUrl: String,
+        isProgressShown: Boolean,
+        retrofitListener: RetrofitListener
+    ) {
+        if (isProgressShown) mDialog?.show()
+
+        val call = apiServices.deleteApiCall(requestUrl)
+        call.enqueue(object : Callback<JsonElement?> {
+            override fun onResponse(call: Call<JsonElement?>, response: Response<JsonElement?>) {
+                dismissDialog()
+                manageResponse(response, retrofitListener)
+            }
+
+            override fun onFailure(call: Call<JsonElement?>, t: Throwable) {
+                dismissDialog()
+                t.printStackTrace()
+                ConnectionError(context, t).setListener {
+                    deleteApiCall(requestUrl, isProgressShown, retrofitListener)
+                }
+            }
+        })
+    }
+
+
 }
